@@ -51,15 +51,37 @@ def proxy(path):
         except ValueError:
             app.logger.error(f"Failed to parse JSON for resource {path}")
             return Response(f"Failed to process JSON response.", status=502)
+    # Handle Protobuf tiles (.mvt)
+    elif path.endswith(".mvt"):
+        # Read the raw content
+        response_content = response.content
 
+        # Remove "Content-Encoding: gzip" if the content is not actually gzipped
+        if response.headers.get("Content-Encoding") == "gzip":
+            if not response_content.startswith(b"\x1f\x8b"):  # Check for gzip magic numbers
+                response.headers.pop("Content-Encoding", None)
+
+        # Ensure no "Transfer-Encoding: chunked" is sent if the content is not chunked
+        response.headers.pop("Transfer-Encoding", None)
+
+        return Response(
+            response_content,
+            status=response.status_code,
+            headers={key: value for key, value in response.headers.items()},
+            content_type=response.headers.get('Content-Type')
+        )
+    
     # Stream non-JSON responses
     def generate():
         for chunk in response.iter_content(chunk_size=1024):
             if chunk:
                 yield chunk
 
+    # Forward headers for non-MVT responses
     headers = {key: value for key, value in response.headers.items()}
+    headers.pop("Transfer-Encoding", None)  # Avoid sending invalid chunked headers
     return Response(generate(), status=response.status_code, headers=headers)
+
 
 def rewrite_json_urls(json_content, proxy_url):
     """Recursively rewrite URLs in a JSON payload."""
