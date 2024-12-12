@@ -27,6 +27,9 @@ services:
   #     - isolated
   tiles-proxy:
     image: flask-tiles-proxy:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
     volumes:
       - ./nginx.conf:/usr/local/openresty/nginx/conf/nginx.conf:ro
     ports:
