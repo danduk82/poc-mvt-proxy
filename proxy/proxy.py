@@ -23,16 +23,14 @@ def get_proxy_url():
 
 def get_baremaps_url(path):
     # Construct the full URL for the backend
-    if path.endswith((".mvt")):
-        base_url = BASE_URLS.get("baremaps-com")
+    if path.endswith((".mvt", "tiles.json")):
+        return BASE_URLS.get("baremaps-com")
     else:
-        base_url = BASE_URLS.get("baremaps-apache-org")    
-    url = f"{base_url}/{path}"
-    return url
-
+        return BASE_URLS.get("baremaps-apache-org")    
+    
 @app.route('/<path:path>', methods=['GET', 'POST', 'PUT', 'DELETE'])
 def proxy(path):
-    url = get_baremaps_url(path)
+    url = f"{get_baremaps_url(path)}/{path}"
     # Forward headers and data from the client
     headers = {key: value for key, value in request.headers if key.lower() != 'host'}
     data = request.get_data() if request.method in ['POST', 'PUT'] else None
@@ -51,7 +49,7 @@ def proxy(path):
         return Response(f"Error connecting to the backend: {e}", status=502)
 
     # Rewrite JSON content for specific resources
-    if path.endswith((".json")):
+    if path.endswith(".json"):
         try:
             json_content = response.json()
             proxy_url = get_proxy_url()
@@ -100,8 +98,10 @@ def rewrite_json_urls(json_content, proxy_url, path):
         return {key: rewrite_json_urls(value, proxy_url, path) for key, value in json_content.items()}
     elif isinstance(json_content, list):
         return [rewrite_json_urls(item, proxy_url, path) for item in json_content]
-    elif isinstance(json_content, str) and get_baremaps_url(path) in json_content:
-        return json_content.replace(get_baremaps_url(path), proxy_url)
+    elif isinstance(json_content, str):
+        for base_url in BASE_URLS.values():
+            json_content = json_content.replace(base_url, proxy_url)
+        return json_content
     return json_content
 
 def get_base_url():
