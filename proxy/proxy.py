@@ -35,7 +35,6 @@ def proxy(path):
     headers = {key: value for key, value in request.headers if key.lower() != 'host'}
     data = request.get_data() if request.method in ['POST', 'PUT'] else None
 
-    # Use the requests library to forward the request
     try:
         response = requests.request(
             method=request.method,
