@@ -1,6 +1,6 @@
 import os
 import requests
-from flask import Flask, request, Response, jsonify
+from flask import Flask, request, Response, jsonify, render_template
 
 app = Flask(__name__)
 
@@ -19,11 +19,14 @@ def get_proxy_url():
 
 @app.route('/<path:path>', methods=['GET', 'POST', 'PUT', 'DELETE'])
 def proxy(path):
+    # Construct the full URL for the backend
     url = f"{BASE_URL}/{path}"
 
+    # Forward headers and data from the client
     headers = {key: value for key, value in request.headers if key.lower() != 'host'}
     data = request.get_data() if request.method in ['POST', 'PUT'] else None
 
+    # Use the requests library to forward the request
     try:
         response = requests.request(
             method=request.method,
@@ -36,10 +39,13 @@ def proxy(path):
     except requests.exceptions.RequestException as e:
         return Response(f"Error connecting to the backend: {e}", status=502)
 
+    # Rewrite JSON content for specific resources
     if path.endswith(("tiles.json", "style.json", "icons.json")):
         try:
             json_content = response.json()
             proxy_url = get_proxy_url()
+
+            # Rewrite URLs in the JSON payload
             rewritten_content = rewrite_json_urls(json_content, proxy_url)
             return jsonify(rewritten_content), response.status_code
         except ValueError:
@@ -65,6 +71,19 @@ def rewrite_json_urls(json_content, proxy_url):
         return json_content.replace(BASE_URL, proxy_url)
     return json_content
 
+@app.route('/map')
+def example_map():
+    """Serve a dynamic HTML page for a MapLibre example."""
+    # Determine the fully qualified URL
+    proto = request.headers.get("X-Forwarded-Proto", FORWARDED_PROTO) or request.scheme
+    host = request.headers.get("X-Forwarded-Host", FORWARDED_HOST) or request.host
+    base_url = f"{proto}://{host}"
+
+    # Pass the fully qualified style.json URL to the template
+    style_url = f"{base_url}/style.json"
+    return render_template('index.html', style_url=style_url)
+
 if __name__ == '__main__':
+
     # Run the Flask server
     app.run(host='0.0.0.0', port=8080)

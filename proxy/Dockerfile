@@ -18,6 +18,7 @@ RUN apt-get update && apt-get install -y python3 python3-pip && rm -rf /var/lib/
 
 # Copy the application code
 COPY proxy.py /app/proxy.py
+COPY templates/ /app/templates/
 
 # Set the working directory
 WORKDIR /app
