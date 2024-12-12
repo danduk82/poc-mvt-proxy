@@ -14,7 +14,7 @@ FROM python:3.11-slim
 
 # Install dependencies
 RUN apt-get update && apt-get install -y python3 python3-pip && rm -rf /var/lib/apt/lists/* \
-    && pip install flask requests
+    && pip install flask requests gunicorn
 
 # Copy the application code
 COPY proxy.py /app/proxy.py
@@ -31,4 +31,5 @@ ENV http_proxy=http://squid:3128
 ENV https_proxy=http://squid:3128
 
 # Run the application
-CMD ["python3", "proxy.py"]
+CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:8080", "proxy:app"]
+
