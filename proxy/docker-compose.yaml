@@ -1,0 +1,35 @@
+networks:
+  isolated:
+    driver: bridge
+    driver_opts:
+      com.docker.network.bridge.enable_ip_masquerade: "false"
+  internet:
+    driver: bridge
+
+
+services:
+  squid:
+    image: ubuntu/squid:5.2-22.04_beta
+    ports:
+      - 3128:3128
+    volumes:
+      - ./squid.conf:/usr/local/squid/etc/squid.conf:ro
+    networks:
+      - isolated
+      - internet
+  # nginx:
+  #   image: openresty-proxy:latest
+  #   volumes:
+  #     - ./nginx.conf:/usr/local/openresty/nginx/conf/nginx.conf:ro
+  #   ports:
+  #     - 8080:8080
+  #   networks:
+  #     - isolated
+  tiles-proxy:
+    image: flask-tiles-proxy:latest
+    volumes:
+      - ./nginx.conf:/usr/local/openresty/nginx/conf/nginx.conf:ro
+    ports:
+      - 8080:8080
+    networks:
+      - isolated
