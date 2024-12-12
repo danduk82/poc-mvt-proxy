@@ -11,3 +11,19 @@ data/tiles.mbtiles:
 clean-tiles:
 	@echo "Cleaning tiles..."
 	@rm -f data/tiles.mbtiles
+
+
+.PHONY: build
+build: 
+	cd proxy && docker compose build
+	cd ..
+
+.PHONY: up
+up: build
+	cd proxy && docker compose up -d
+	cd ..
+
+.PHONY: down
+down:
+	cd proxy && docker compose down
+	cd ..
