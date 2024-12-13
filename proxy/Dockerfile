@@ -33,5 +33,5 @@ ENV https_proxy=http://squid:3128
 # Run the application
 CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:8080", "proxy:app"]
 
-
-CMD ["python3", "proxy.py"]
+# debug
+# CMD ["python3", "proxy.py"]

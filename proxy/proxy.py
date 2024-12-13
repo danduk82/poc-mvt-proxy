@@ -6,7 +6,11 @@ from flask import Flask, request, Response, jsonify, render_template
 from flask_caching import Cache
 
 app = Flask(__name__)
-cache = Cache(app, config={"CACHE_TYPE": "SimpleCache", "CACHE_DEFAULT_TIMEOUT": 300})
+# in memory
+# cache = Cache(app, config={"CACHE_TYPE": "SimpleCache", "CACHE_DEFAULT_TIMEOUT": 300})
+
+# file based
+cache = Cache(app, config={"CACHE_TYPE": "FileSystemCache", "CACHE_DEFAULT_TIMEOUT": 300, "CACHE_DIR": "/mnt/tiles"})
 
 
 # Base URL for the backend
