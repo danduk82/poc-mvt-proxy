@@ -1,8 +1,13 @@
+import hashlib
+import logging
 import os
 import requests
 from flask import Flask, request, Response, jsonify, render_template
+from flask_caching import Cache
 
 app = Flask(__name__)
+cache = Cache(app, config={"CACHE_TYPE": "SimpleCache", "CACHE_DEFAULT_TIMEOUT": 300})
+
 
 # Base URL for the backend
 BASE_URLS = {
@@ -14,6 +19,7 @@ BASE_URLS = {
 # Environment variables for forwarded protocol and host
 FORWARDED_PROTO = os.getenv("FORWARDED_PROTO")
 FORWARDED_HOST = os.getenv("FORWARDED_HOST")
+
 
 def get_proxy_url():
     """Determine the proxy URL based on headers or environment variables."""
@@ -28,9 +34,31 @@ def get_baremaps_url(path):
     else:
         return BASE_URLS.get("baremaps-apache-org")    
     
-@app.route('/<path:path>', methods=['GET', 'POST', 'PUT', 'DELETE'])
+@app.route('/<path:path>', methods=['GET'])
 def proxy(path):
     url = f"{get_baremaps_url(path)}/{path}"
+    
+    
+        # Generate a unique cache key
+    def cache_key():
+        key = request.full_path  # Full request URL and query string
+        return hashlib.md5(key.encode('utf-8')).hexdigest()
+    # Check if the tile is in the cache
+    if path.endswith(".mvt"):
+        cached_data = cache.get(cache_key())
+        if cached_data:
+            # Serve directly from the cache
+            app.logger.info(f"Cache hit for {path}")
+            cached_data["headers"]['cache-hit'] = "true"
+            return Response(
+                cached_data["content"],
+                status=200,
+                headers=cached_data["headers"],
+                content_type=cached_data["content_type"],
+            )
+
+        app.logger.info(f"Cache miss for {path}")
+    
     # Forward headers and data from the client
     headers = {key: value for key, value in request.headers if key.lower() != 'host'}
     data = request.get_data() if request.method in ['POST', 'PUT'] else None
@@ -71,6 +99,14 @@ def proxy(path):
 
         # Ensure no "Transfer-Encoding: chunked" is sent if the content is not chunked
         response.headers.pop("Transfer-Encoding", None)
+        cache.set(
+            cache_key(),
+            {
+                "content": response_content,
+                "headers": {key: value for key, value in response.headers.items()},
+                "content_type": response.headers.get("Content-Type"),
+            },
+        )
 
         return Response(
             response_content,
@@ -131,6 +167,8 @@ def dark_map():
     return render_map('index.html', 'mapStyles/dark.json')
 
 if __name__ == '__main__':
+    log_level = os.getenv('FLASK_LOG_LEVEL', 'INFO').upper()
+    app.logger.setLevel(getattr(logging, log_level, logging.INFO))
 
     # Run the Flask server
     app.run(host='0.0.0.0', port=8080)
