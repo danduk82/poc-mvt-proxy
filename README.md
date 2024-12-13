@@ -33,7 +33,7 @@ make up
 if the user doesn't have `make` on his machine he can simply
 
 ```shell
-cd proxy && docker compose up -d
+cd proxy && docker compose up -d --build
 ```
 
 
